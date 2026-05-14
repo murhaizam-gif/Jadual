@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Belajar Iqra 3D</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Naskh+Arabic:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a2e;
+    overflow: hidden;
+    font-family: 'Fredoka One', cursive;
+    color: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #stars {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #canvas-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 55vh;
+  }
+
+  canvas { display: block; }
+
+  #info-panel {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 10px 20px;
+    width: 100%;
+  }
+
+  #letter-name {
+    font-size: clamp(2rem, 8vw, 4rem);
+    color: #FFD700;
+    text-shadow: 0 0 20px #FFD70088, 0 0 40px #FFD70044;
+    letter-spacing: 2px;
+    animation: glow 2s ease-in-out infinite alternate;
+    font-family: 'Fredoka One', cursive;
+  }
+
+  #letter-arabic-name {
+    font-size: clamp(1.2rem, 4vw, 2rem);
+    color: #98fff0;
+    font-family: 'Noto Naskh Arabic', serif;
+    margin-top: 4px;
+    opacity: 0.9;
+  }
+
+  #letter-sound {
+    font-size: clamp(1rem, 3vw, 1.5rem);
+    color: #ff9ef5;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  @keyframes glow {
+    from { text-shadow: 0 0 10px #FFD70088; }
+    to   { text-shadow: 0 0 30px #FFD700cc, 0 0 60px #FFD70066; }
+  }
+
+  #nav-buttons {
+    display: flex;
+    gap: 16px;
+    margin-top: 14px;
+    justify-content: center;
+    z-index: 2;
+    position: relative;
+  }
+
+  .nav-btn {
+    background: linear-gradient(135deg, #6c2fff, #c940ff);
+    border: none;
+    border-radius: 50px;
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1rem, 3vw, 1.3rem);
+    padding: 10px 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px #c940ff66;
+    transition: transform 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-btn:active { transform: scale(0.93); }
+  .nav-btn:hover  { box-shadow: 0 6px 28px #c940ffaa; transform: scale(1.05); }
+
+  #play-btn {
+    background: linear-gradient(135deg, #00c6a7, #00e5ff);
+    box-shadow: 0 4px 20px #00e5ff66;
+  }
+
+  #letter-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding: 0 20px;
+    max-width: 600px;
+    z-index: 2;
+    position: relative;
+  }
+
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #ffffff33;
+    transition: background 0.3s, transform 0.3s;
+    cursor: pointer;
+  }
+
+  .dot.active {
+    background: #FFD700;
+    transform: scale(1.4);
+    box-shadow: 0 0 8px #FFD700;
+  }
+
+  #progress-text {
+    font-size: 0.85rem;
+    color: #ffffff66;
+    margin-top: 8px;
+    z-index: 2;
+    position: relative;
+  }
+
+  #confetti-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 99;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div id="canvas-container"><canvas id="three-canvas"></canvas></div>
+
+<div id="info-panel">
+  <div id="letter-name">Alif</div>
+  <div id="letter-arabic-name">أَلِف</div>
+  <div id="letter-sound">Bunyi: "A"</div>
+</div>
+
+<div id="nav-buttons">
+  <button class="nav-btn" id="prev-btn">◀ Sebelum</button>
+  <button class="nav-btn" id="play-btn" onclick="playSound()">🔊 Bunyi</button>
+  <button class="nav-btn" id="next-btn">Lepas ▶</button>
+</div>
+
+<div id="letter-dots"></div>
+<div id="progress-text">1 / 28</div>
+
+<div id="confetti-container" id="confetti-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── DATA HURUF HIJAIYYAH ──────────────────────────────────────────────────────
+const huruf = [
+  { name:"Alif",   arabic:"ا", arabicName:"أَلِف",  sound:"A",   color:"#FF6B6B" },
+  { name:"Ba",     arabic:"ب", arabicName:"بَاء",   sound:"B",   color:"#FF9F43" },
+  { name:"Ta",     arabic:"ت", arabicName:"تَاء",   sound:"T",   color:"#F9CA24" },
+  { name:"Tsa",    arabic:"ث", arabicName:"ثَاء",   sound:"Ts",  color:"#6AB04C" },
+  { name:"Jim",    arabic:"ج", arabicName:"جِيم",   sound:"J",   color:"#22A6B3" },
+  { name:"Ha",     arabic:"ح", arabicName:"حَاء",   sound:"H",   color:"#4834D4" },
+  { name:"Kha",    arabic:"خ", arabicName:"خَاء",   sound:"Kh",  color:"#BE2EDD" },
+  { name:"Dal",    arabic:"د", arabicName:"دَال",   sound:"D",   color:"#FF6B6B" },
+  { name:"Dzal",   arabic:"ذ", arabicName:"ذَال",   sound:"Dz",  color:"#FF9F43" },
+  { name:"Ra",     arabic:"ر", arabicName:"رَاء",   sound:"R",   color:"#F9CA24" },
+  { name:"Zai",    arabic:"ز", arabicName:"زَاي",   sound:"Z",   color:"#6AB04C" },
+  { name:"Sin",    arabic:"س", arabicName:"سِين",   sound:"S",   color:"#22A6B3" },
+  { name:"Syin",   arabic:"ش", arabicName:"شِين",   sound:"Sy",  color:"#4834D4" },
+  { name:"Sad",    arabic:"ص", arabicName:"صَاد",   sound:"Sh",  color:"#BE2EDD" },
+  { name:"Dad",    arabic:"ض", arabicName:"ضَاد",   sound:"Dh",  color:"#FF6B6B" },
+  { name:"Tha",    arabic:"ط", arabicName:"طَاء",   sound:"Th",  color:"#FF9F43" },
+  { name:"Zha",    arabic:"ظ", arabicName:"ظَاء",   sound:"Zh",  color:"#F9CA24" },
+  { name:"Ain",    arabic:"ع", arabicName:"عَين",   sound:"'A",  color:"#6AB04C" },
+  { name:"Ghain",  arabic:"غ", arabicName:"غَين",   sound:"Gh",  color:"#22A6B3" },
+  { name:"Fa",     arabic:"ف", arabicName:"فَاء",   sound:"F",   color:"#4834D4" },
+  { name:"Qaf",    arabic:"ق", arabicName:"قَاف",   sound:"Q",   color:"#BE2EDD" },
+  { name:"Kaf",    arabic:"ك", arabicName:"كَاف",   sound:"K",   color:"#FF6B6B" },
+  { name:"Lam",    arabic:"ل", arabicName:"لاَم",   sound:"L",   color:"#FF9F43" },
+  { name:"Mim",    arabic:"م", arabicName:"مِيم",   sound:"M",   color:"#F9CA24" },
+  { name:"Nun",    arabic:"ن", arabicName:"نُون",   sound:"N",   color:"#6AB04C" },
+  { name:"Wau",    arabic:"و", arabicName:"وَاو",   sound:"W",   color:"#22A6B3" },
+  { name:"Ha2",    arabic:"ه", arabicName:"هَاء",   sound:"H",   color:"#4834D4" },
+  { name:"Ya",     arabic:"ي", arabicName:"يَاء",   sound:"Y",   color:"#BE2EDD" },
+];
+
+let currentIdx = 0;
+let scene, camera, renderer, textMesh, group, particles;
+let animFrame, rotSpeed = 0.012;
+let isTransitioning = false;
+
+// ── STARFIELD ─────────────────────────────────────────────────────────────────
+(function starfield() {
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  const stars = Array.from({length:160}, () => ({
+    x: Math.random()*c.width, y: Math.random()*c.height,
+    r: Math.random()*1.8+0.3, a: Math.random(), s: Math.random()*0.005+0.002
+  }));
+  function draw() {
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(s => {
+      s.a += s.s; if(s.a>1||s.a<0) s.s*=-1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+  window.addEventListener('resize', ()=>{ c.width=window.innerWidth; c.height=window.innerHeight; });
+})();
+
+// ── THREE.JS SETUP ────────────────────────────────────────────────────────────
+function initThree() {
+  const container = document.getElementById('canvas-container');
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+  camera.position.z = 5;
+
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), antialias:true, alpha:true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // Lighting
+  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambient);
+  const point1 = new THREE.PointLight(0xffd700, 2, 20);
+  point1.position.set(3, 3, 3);
+  scene.add(point1);
+  const point2 = new THREE.PointLight(0x00e5ff, 1.5, 20);
+  point2.position.set(-3, -2, 2);
+  scene.add(point2);
+
+  group = new THREE.Group();
+  scene.add(group);
+
+  // Floating particles around letter
+  const pGeo = new THREE.BufferGeometry();
+  const pPos = new Float32Array(200*3);
+  for(let i=0;i<200*3;i+=3){
+    const r = 1.8 + Math.random()*1.2;
+    const theta = Math.random()*Math.PI*2;
+    const phi = Math.random()*Math.PI;
+    pPos[i]   = r * Math.sin(phi) * Math.cos(theta);
+    pPos[i+1] = r * Math.sin(phi) * Math.sin(theta);
+    pPos[i+2] = r * Math.cos(phi);
+  }
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  particles = new THREE.Points(pGeo, new THREE.PointsMaterial({
+    color: 0xffd700, size: 0.04, transparent:true, opacity:0.7
+  }));
+  group.add(particles);
+
+  buildLetter(0);
+  animate();
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  });
+}
+
+// ── BUILD 3D LETTER ───────────────────────────────────────────────────────────
+function buildLetter(idx) {
+  // Remove old mesh
+  for(let i = group.children.length-1; i>=0; i--) {
+    if(group.children[i] !== particles) group.remove(group.children[i]);
+  }
+
+  const h = huruf[idx];
+  const col = new THREE.Color(h.color);
+
+  // Canvas texture for Arabic letter
+  const cvs = document.createElement('canvas');
+  cvs.width = 512; cvs.height = 512;
+  const ctx = cvs.getContext('2d');
+
+  // Gradient background for texture
+  const g = ctx.createRadialGradient(256,256,30, 256,256,260);
+  g.addColorStop(0, h.color + 'ff');
+  g.addColorStop(1, h.color + '22');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,512,512);
+
+  // Arabic letter
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 320px "Noto Naskh Arabic", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 20;
+  ctx.fillText(h.arabic, 256, 260);
+
+  const tex = new THREE.CanvasTexture(cvs);
+
+  // Main 3D box for the letter
+  const geo = new THREE.BoxGeometry(2.2, 2.2, 0.4, 1, 1, 1);
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex,
+    color: 0xffffff,
+    metalness: 0.3,
+    roughness: 0.4,
+    emissive: col,
+    emissiveIntensity: 0.15,
+  });
+
+  // Rounded look: bevel edges with EdgesGeometry
+  textMesh = new THREE.Mesh(geo, mat);
+
+  // Edge glow
+  const edges = new THREE.EdgesGeometry(geo);
+  const lineMat = new THREE.LineBasicMaterial({ color: h.color, linewidth: 1, transparent:true, opacity:0.6 });
+  const wireframe = new THREE.LineSegments(edges, lineMat);
+  textMesh.add(wireframe);
+
+  group.add(textMesh);
+
+  // Update particles color
+  particles.material.color.set(h.color);
+
+  // Ring around letter
+  const ringGeo = new THREE.TorusGeometry(1.6, 0.04, 8, 60);
+  const ringMat = new THREE.MeshStandardMaterial({ color: h.color, emissive: new THREE.Color(h.color), emissiveIntensity:0.8 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI / 3;
+  group.add(ring);
+
+  // Update UI
+  document.getElementById('letter-name').textContent = h.name;
+  document.getElementById('letter-arabic-name').textContent = h.arabicName;
+  document.getElementById('letter-sound').textContent = `Bunyi: "${h.sound}"`;
+
+  // Dots
+  updateDots(idx);
+}
+
+function updateDots(idx) {
+  const dotsEl = document.getElementById('letter-dots');
+  dotsEl.innerHTML = '';
+  huruf.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i===idx?' active':'');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  document.getElementById('progress-text').textContent = `${idx+1} / ${huruf.length}`;
+}
+
+// ── ANIMATION LOOP ────────────────────────────────────────────────────────────
+let time = 0;
+function animate() {
+  animFrame = requestAnimationFrame(animate);
+  time += 0.01;
+
+  if(group) {
+    group.rotation.y += rotSpeed;
+    group.rotation.x = Math.sin(time * 0.4) * 0.15;
+    group.position.y = Math.sin(time * 0.6) * 0.12;
+    particles.rotation.y -= 0.005;
+    particles.rotation.x += 0.002;
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function goTo(idx) {
+  if(isTransitioning) return;
+  isTransitioning = true;
+
+  // Spin out animation
+  let spin = 0;
+  const spinOut = setInterval(()=>{
+    rotSpeed += 0.04;
+    spin++;
+    if(spin > 15) {
+      clearInterval(spinOut);
+      currentIdx = (idx + huruf.length) % huruf.length;
+      buildLetter(currentIdx);
+      rotSpeed = 0.012;
+      isTransitioning = false;
+      if(currentIdx === huruf.length - 1) launchConfetti();
+    }
+  }, 20);
+}
+
+document.getElementById('next-btn').onclick = () => goTo(currentIdx + 1);
+document.getElementById('prev-btn').onclick = () => goTo(currentIdx - 1);
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight') goTo(currentIdx+1);
+  if(e.key === 'ArrowLeft')  goTo(currentIdx-1);
+});
+
+// Touch swipe
+let touchX = 0;
+document.addEventListener('touchstart', e => touchX = e.touches[0].clientX);
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchX;
+  if(Math.abs(dx) > 50) goTo(dx < 0 ? currentIdx+1 : currentIdx-1);
+});
+
+// ── SOUND (Web Speech API) ─────────────────────────────────────────────────────
+function playSound() {
+  const h = huruf[currentIdx];
+  if(!window.speechSynthesis) return;
+  const utter = new SpeechSynthesisUtterance(h.arabic);
+  utter.lang = 'ar-SA';
+  utter.rate = 0.7;
+  utter.pitch = 1.1;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
+
+// ── CONFETTI ──────────────────────────────────────────────────────────────────
+function launchConfetti() {
+  const container = document.getElementById('confetti-container');
+  container.innerHTML = '';
+  for(let i=0;i<80;i++){
+    const d = document.createElement('div');
+    d.style.cssText = `
+      position:absolute;
+      width:${6+Math.random()*8}px; height:${6+Math.random()*8}px;
+      background: hsl(${Math.random()*360},90%,60%);
+      border-radius: ${Math.random()>0.5?'50%':'2px'};
+      left: ${Math.random()*100}%;
+      top: -20px;
+      animation: fall ${1.5+Math.random()*2}s ease-in ${Math.random()*1}s forwards;
+    `;
+    container.appendChild(d);
+  }
+  const style = document.createElement('style');
+  style.textContent = `@keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity:0; } }`;
+  document.head.appendChild(style);
+  setTimeout(()=> container.innerHTML='', 4000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', initThree);
+</script>
+</body>
+</html>
