@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Iqra — Mic Sensitivity Tinggi</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Tajawal:wght@300;400;700&display=swap');
+
+:root {
+  --gold: #d4a843;
+  --gold-glow: rgba(212,168,67,0.25);
+  --green: #2d6a4f;
+  --green2: #40916c;
+  --bg: #0d1710;
+  --card: #142018;
+  --card2: #1c2e21;
+  --text: #eee8d8;
+  --muted: #7a9480;
+  --red: #c0392b;
+  --correct: #52b788;
+  --wrong: #e07070;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  font-family:'Tajawal',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+
+/* ── AMBIENT ── */
+body::before {
+  content:'';
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 10%, rgba(45,106,79,.2) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 50% at 85% 85%, rgba(212,168,67,.08) 0%, transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+.wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:0 14px 40px;}
+
+/* ── HEADER ── */
+header{text-align:center;padding:28px 0 20px;border-bottom:1px solid rgba(212,168,67,.15);}
+.logo{font-family:'Amiri',serif;font-size:clamp(22px,5vw,38px);color:var(--gold);letter-spacing:3px;}
+.tagline{font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:5px;}
+
+/* ── JILID TABS ── */
+.jilid-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:18px 0 0;}
+.jtab{background:transparent;border:1px solid rgba(212,168,67,.2);color:var(--muted);
+  padding:6px 18px;border-radius:20px;font-size:12px;cursor:pointer;
+  font-family:'Tajawal',sans-serif;transition:all .2s;}
+.jtab:hover{border-color:var(--gold);color:var(--gold);}
+.jtab.on{background:linear-gradient(135deg,#1a3d2b,#254d35);border-color:var(--gold);color:var(--gold);font-weight:700;}
+
+/* ── GRID LAYOUT ── */
+.grid{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-top:18px;}
+@media(max-width:700px){.grid{grid-template-columns:1fr;}}
+
+/* ── IQRA PANEL ── */
+.panel{background:var(--card);border:1px solid rgba(212,168,67,.12);border-radius:18px;overflow:hidden;}
+.panel-head{padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.05);
+  display:flex;justify-content:space-between;align-items:center;}
+.panel-title{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);}
+.halaman-num{font-size:12px;color:var(--gold);font-weight:700;}
+
+.ayat-wrap{padding:20px;direction:rtl;}
+.baris{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:16px;}
+
+.hbox{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;}
+.hbox .arab{
+  font-family:'Noto Naskh Arabic','Amiri',serif;
+  font-size:clamp(26px,6vw,44px);
+  background:var(--card2);
+  border:1.5px solid rgba(255,255,255,.07);
+  border-radius:10px;padding:8px 14px;min-width:58px;text-align:center;
+  transition:all .25s;line-height:1.6;
+}
+.hbox .rumi{font-size:10px;color:var(--muted);direction:ltr;letter-spacing:.5px;}
+.hbox.aktif .arab{border-color:var(--gold);background:rgba(212,168,67,.1);color:var(--gold);}
+.hbox.ok .arab{border-color:var(--correct);background:rgba(82,183,136,.12);color:var(--correct);animation:popIn .35s ease;}
+.hbox.silap .arab{border-color:var(--wrong);background:rgba(224,112,112,.12);color:var(--wrong);animation:gegar .35s ease;}
+
+@keyframes popIn{0%{transform:scale(.75)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+@keyframes gegar{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* PROGRESS */
+.prog-wrap{height:4px;background:rgba(255,255,255,.06);}
+.prog-bar{height:4px;background:linear-gradient(90deg,var(--green2),var(--gold));transition:width .4s ease;}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid rgba(255,255,255,.05);}
+.nbtn{background:var(--card2);border:1px solid rgba(212,168,67,.18);color:var(--text);
+  padding:8px 18px;border-radius:8px;font-size:12px;cursor:pointer;
+  font-family:'Tajawal',sans-serif;transition:all .2s;}
+.nbtn:hover:not(:disabled){border-color:var(--gold);color:var(--gold);}
+.nbtn:disabled{opacity:.3;cursor:not-allowed;}
+.nav-mid{font-size:12px;color:var(--muted);}
+
+/* ── RIGHT PANEL ── */
+.right{display:flex;flex-direction:column;gap:14px;}
+
+/* MIC CARD */
+.mic-card{background:var(--card);border:1px solid rgba(212,168,67,.12);border-radius:18px;padding:20px;text-align:center;}
+.sec-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:14px;}
+
+/* WAVEFORM */
+.wave-wrap{height:48px;display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:14px;}
+.wave-bar{width:4px;border-radius:4px;background:var(--green2);transition:height .08s ease;height:4px;}
+.wave-wrap.live .wave-bar{animation:wavePulse var(--dur,0.6s) ease-in-out infinite alternate;}
+@keyframes wavePulse{from{height:4px}to{height:var(--h,20px)}}
+
+/* MIC TOGGLE */
+.mic-toggle{
+  width:70px;height:70px;border-radius:50%;
+  border:2.5px solid var(--green2);
+  background:linear-gradient(135deg,#122518,#1e3d28);
+  font-size:26px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 14px;position:relative;
+  transition:all .25s;
+}
+.mic-toggle.on{
+  border-color:var(--gold);
+  background:linear-gradient(135deg,#3a2800,#6b4d00);
+  box-shadow:0 0 0 8px rgba(212,168,67,.12),0 0 0 16px rgba(212,168,67,.05);
+  animation:glow 1.5s infinite;
+}
+@keyframes glow{
+  0%,100%{box-shadow:0 0 0 6px rgba(212,168,67,.15),0 0 0 14px rgba(212,168,67,.05);}
+  50%{box-shadow:0 0 0 12px rgba(212,168,67,.2),0 0 0 24px rgba(212,168,67,.07);}
+}
+.mic-toggle.off-state{border-color:#444;background:#1a1a1a;opacity:.5;cursor:not-allowed;}
+
+.mic-label{font-size:12px;color:var(--muted);margin-bottom:10px;min-height:18px;}
+.mic-label.live{color:var(--gold);}
+.mic-label.ok{color:var(--correct);}
+.mic-label.err{color:var(--wrong);}
+
+/* SENSITIVITY SLIDER */
+.sens-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.sens-row label{font-size:11px;color:var(--muted);white-space:nowrap;}
+input[type=range]{
+  flex:1;-webkit-appearance:none;height:4px;
+  background:rgba(255,255,255,.1);border-radius:4px;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  background:var(--gold);border-radius:50%;cursor:pointer;
+}
+.sens-val{font-size:11px;color:var(--gold);min-width:24px;text-align:right;}
+
+/* MODE TOGGLE */
+.mode-row{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
+.mbtn{background:var(--card2);border:1px solid rgba(255,255,255,.08);color:var(--muted);
+  padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;
+  font-family:'Tajawal',sans-serif;transition:all .2s;}
+.mbtn.on{border-color:var(--gold);color:var(--gold);background:rgba(212,168,67,.08);}
+
+/* SASARAN CARD */
+.target-card{background:var(--card);border:1px solid rgba(212,168,67,.12);border-radius:18px;padding:18px;text-align:center;}
+.target-arab{font-family:'Noto Naskh Arabic','Amiri',serif;font-size:52px;color:var(--gold);
+  direction:rtl;margin:8px 0 4px;line-height:1.4;}
+.target-rumi{font-size:22px;color:var(--text);font-weight:700;letter-spacing:3px;margin-bottom:8px;}
+.target-tip{font-size:11px;color:var(--muted);}
+
+/* RESULT */
+.result-card{background:var(--card);border:1px solid rgba(212,168,67,.12);border-radius:18px;padding:16px;}
+.result-heard{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.result-heard span{color:var(--text);font-weight:700;font-family:'Amiri',serif;font-size:15px;}
+.result-verdict{font-size:14px;font-weight:700;margin-top:4px;}
+.result-verdict.ok{color:var(--correct);}
+.result-verdict.err{color:var(--wrong);}
+
+/* SKOR */
+.skor-card{background:var(--card);border:1px solid rgba(212,168,67,.12);border-radius:18px;padding:16px;}
+.skor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+.snum{text-align:center;}
+.snum .n{font-size:26px;font-weight:700;color:var(--gold);}
+.snum.g .n{color:var(--correct);}
+.snum.r .n{color:var(--wrong);}
+.snum .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+
+/* TIPS */
+.tip-box{background:rgba(45,106,79,.1);border:1px solid rgba(64,145,108,.2);border-radius:12px;padding:12px 14px;
+  font-size:12px;color:var(--muted);line-height:1.7;}
+.tip-box strong{color:var(--green2);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <div class="logo">نظام قراءة إقرأ</div>
+  <div class="tagline">Mic Sensitivity Tinggi · Dengar Suara Perlahan</div>
+  <div class="jilid-tabs" id="jilidTabs"></div>
+</header>
+
+<div class="grid">
+
+  <!-- LEFT: IQRA PANEL -->
+  <div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title" id="jilidLabel">Jilid 1</span>
+        <span class="halaman-num" id="halLabel">Halaman 1</span>
+      </div>
+      <div class="prog-wrap"><div class="prog-bar" id="progBar" style="width:0%"></div></div>
+      <div class="ayat-wrap" id="ayatWrap"></div>
+      <div class="nav">
+        <button class="nbtn" id="btnPrev" onclick="tukarHal(-1)">← Sebelum</button>
+        <span class="nav-mid" id="navMid">1 / 5</span>
+        <button class="nbtn" id="btnNext" onclick="tukarHal(1)">Seterus →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right">
+
+    <!-- MIC -->
+    <div class="mic-card">
+      <div class="sec-label">🎙️ Kawalan Mikrofon</div>
+
+      <!-- WAVEFORM -->
+      <div class="wave-wrap" id="waveWrap">
+        <div class="wave-bar" style="--dur:.5s;--h:8px"></div>
+        <div class="wave-bar" style="--dur:.7s;--h:28px"></div>
+        <div class="wave-bar" style="--dur:.4s;--h:18px"></div>
+        <div class="wave-bar" style="--dur:.6s;--h:36px"></div>
+        <div class="wave-bar" style="--dur:.35s;--h:22px"></div>
+        <div class="wave-bar" style="--dur:.8s;--h:40px"></div>
+        <div class="wave-bar" style="--dur:.45s;--h:26px"></div>
+        <div class="wave-bar" style="--dur:.65s;--h:32px"></div>
+        <div class="wave-bar" style="--dur:.5s;--h:14px"></div>
+      </div>
+
+      <button class="mic-toggle" id="micBtn" onclick="toggleMic()">🎤</button>
+      <div class="mic-label" id="micLabel">Tekan untuk mulakan</div>
+
+      <!-- SENSITIVITY -->
+      <div class="sens-row">
+        <label>Sensitivity</label>
+        <input type="range" id="sensSlider" min="1" max="5" value="3" oninput="ubahSens(this.value)">
+        <span class="sens-val" id="sensVal">3</span>
+      </div>
+
+      <!-- LANG -->
+      <div class="mode-row">
+        <button class="mbtn on" id="langAR" onclick="setLang('ar-SA')">🇸🇦 Arab</button>
+        <button class="mbtn" id="langMS" onclick="setLang('ms-MY')">🇲🇾 Melayu</button>
+        <button class="mbtn" id="langEN" onclick="setLang('en-US')">🇬🇧 Inggeris</button>
+      </div>
+
+      <div class="tip-box" style="margin-top:12px;">
+        <strong>Tip sensitivity rendah (1–2):</strong> Lebih sensitif, pick suara perlahan.<br>
+        <strong>Tip sensitivity tinggi (4–5):</strong> Perlu sebut lebih jelas, kurang false detect.
+      </div>
+    </div>
+
+    <!-- SASARAN -->
+    <div class="target-card" id="targetCard">
+      <div class="sec-label">Huruf Sasaran</div>
+      <div class="target-arab" id="tArab">—</div>
+      <div class="target-rumi" id="tRumi">—</div>
+      <div class="target-tip" id="tTip">Klik mana-mana huruf atau mulakan mic</div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-card" id="resultCard" style="display:none;">
+      <div class="sec-label">Keputusan</div>
+      <div class="result-heard">Didengari: <span id="rHeard">—</span></div>
+      <div class="result-verdict" id="rVerdict"></div>
+    </div>
+
+    <!-- SKOR -->
+    <div class="skor-card">
+      <div class="sec-label">Papan Skor</div>
+      <div class="skor-grid">
+        <div class="snum g"><div class="n" id="sBenar">0</div><div class="l">✓ Betul</div></div>
+        <div class="snum r"><div class="n" id="sSalah">0</div><div class="l">✗ Silap</div></div>
+        <div class="snum"><div class="n" id="sPct">—</div><div class="l">% Tepat</div></div>
+      </div>
+      <div style="margin-top:10px;text-align:center;">
+        <button class="nbtn" onclick="resetSkor()" style="font-size:11px;padding:5px 14px;">↺ Reset Skor</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────
+const DATA = {
+  1:{nama:"Jilid 1",halaman:[
+    {baris:[
+      [{a:"بَ",r:"BA",b:["ba","baa","بَ"]},{a:"بِ",r:"BI",b:["bi","bee"]},{a:"بُ",r:"BU",b:["bu","boo"]}],
+      [{a:"تَ",r:"TA",b:["ta","taa"]},{a:"تِ",r:"TI",b:["ti","tee"]},{a:"تُ",r:"TU",b:["tu","too"]}],
+      [{a:"ثَ",r:"SA",b:["sa","tha"]},{a:"ثِ",r:"SI",b:["si","thi"]},{a:"ثُ",r:"SU",b:["su","thu"]}],
+    ]},
+    {baris:[
+      [{a:"جَ",r:"JA",b:["ja","jaa"]},{a:"جِ",r:"JI",b:["ji"]},{a:"جُ",r:"JU",b:["ju"]}],
+      [{a:"حَ",r:"HA",b:["ha","haa"]},{a:"حِ",r:"HI",b:["hi"]},{a:"حُ",r:"HU",b:["hu"]}],
+      [{a:"خَ",r:"KHA",b:["kha"]},{a:"خِ",r:"KHI",b:["khi"]},{a:"خُ",r:"KHU",b:["khu"]}],
+    ]},
+    {baris:[
+      [{a:"دَ",r:"DA",b:["da"]},{a:"دِ",r:"DI",b:["di"]},{a:"دُ",r:"DU",b:["du"]}],
+      [{a:"رَ",r:"RA",b:["ra"]},{a:"رِ",r:"RI",b:["ri"]},{a:"رُ",r:"RU",b:["ru"]}],
+      [{a:"زَ",r:"ZA",b:["za"]},{a:"زِ",r:"ZI",b:["zi"]},{a:"زُ",r:"ZU",b:["zu"]}],
+    ]},
+    {baris:[
+      [{a:"سَ",r:"SA",b:["sa"]},{a:"سِ",r:"SI",b:["si"]},{a:"سُ",r:"SU",b:["su"]}],
+      [{a:"شَ",r:"SYA",b:["sya","sha"]},{a:"شِ",r:"SYI",b:["syi","shi"]},{a:"شُ",r:"SYU",b:["syu","shu"]}],
+      [{a:"صَ",r:"SO",b:["so","soa"]},{a:"صِ",r:"SI",b:["si"]},{a:"صُ",r:"SU",b:["su"]}],
+    ]},
+    {baris:[
+      [{a:"فَ",r:"FA",b:["fa"]},{a:"فِ",r:"FI",b:["fi"]},{a:"فُ",r:"FU",b:["fu"]}],
+      [{a:"قَ",r:"QA",b:["qa","ka"]},{a:"قِ",r:"QI",b:["qi","ki"]},{a:"قُ",r:"QU",b:["qu","ku"]}],
+      [{a:"كَ",r:"KA",b:["ka"]},{a:"كِ",r:"KI",b:["ki"]},{a:"كُ",r:"KU",b:["ku"]}],
+    ]},
+  ]},
+  2:{nama:"Jilid 2",halaman:[
+    {baris:[
+      [{a:"بَا",r:"BAA",b:["baa","ba"]},{a:"بِي",r:"BII",b:["bii","bi"]},{a:"بُو",r:"BUU",b:["buu","bu"]}],
+      [{a:"تَا",r:"TAA",b:["taa","ta"]},{a:"تِي",r:"TII",b:["tii","ti"]},{a:"تُو",r:"TUU",b:["tuu","tu"]}],
+      [{a:"جَا",r:"JAA",b:["jaa","ja"]},{a:"جِي",r:"JII",b:["jii","ji"]},{a:"جُو",r:"JUU",b:["juu","ju"]}],
+    ]},
+    {baris:[
+      [{a:"سَا",r:"SAA",b:["saa","sa"]},{a:"سِي",r:"SII",b:["sii","si"]},{a:"سُو",r:"SUU",b:["suu","su"]}],
+      [{a:"كَا",r:"KAA",b:["kaa","ka"]},{a:"كِي",r:"KII",b:["kii","ki"]},{a:"كُو",r:"KUU",b:["kuu","ku"]}],
+      [{a:"مَا",r:"MAA",b:["maa","ma"]},{a:"مِي",r:"MII",b:["mii","mi"]},{a:"مُو",r:"MUU",b:["muu","mu"]}],
+    ]},
+  ]},
+  3:{nama:"Jilid 3",halaman:[
+    {baris:[
+      [{a:"بَنْ",r:"BAN",b:["ban"]},{a:"مَنْ",r:"MAN",b:["man"]},{a:"كَنْ",r:"KAN",b:["kan"]}],
+      [{a:"تَنْ",r:"TAN",b:["tan"]},{a:"سَنْ",r:"SAN",b:["san"]},{a:"رَنْ",r:"RAN",b:["ran"]}],
+      [{a:"بِنْ",r:"BIN",b:["bin"]},{a:"مِنْ",r:"MIN",b:["min"]},{a:"كِنْ",r:"KIN",b:["kin"]}],
+    ]},
+  ]},
+  4:{nama:"Jilid 4",halaman:[
+    {baris:[
+      [{a:"كِتَابٌ",r:"KITABUN",b:["kitabun","kitab"]},{a:"بَيْتٌ",r:"BAITUN",b:["baitun","bait"]}],
+      [{a:"مَاءٌ",r:"MAAUN",b:["maaun","maa","air"]},{a:"نَارٌ",r:"NARUN",b:["narun","nar"]}],
+    ]},
+  ]},
+  5:{nama:"Jilid 5",halaman:[
+    {baris:[
+      [{a:"بِسْمِ اللهِ",r:"BISMILLAH",b:["bismillah","bismi allah"]}],
+      [{a:"الرَّحْمٰنِ الرَّحِيمِ",r:"ARRAHMANIRAHIM",b:["arrahmanirahim","rahman rahim"]}],
+    ]},
+  ]},
+  6:{nama:"Jilid 6",halaman:[
+    {baris:[
+      [{a:"الْحَمْدُ لِلَّهِ",r:"ALHAMDULILLAH",b:["alhamdulillah","alhamdu"]}],
+      [{a:"رَبِّ الْعَالَمِينَ",r:"RABBILALAMIN",b:["rabbilalamin","rabil alamin"]}],
+    ]},
+  ]},
+};
+
+// ── STATE ──────────────────────────────────────
+let jilid=1,halIdx=0,tgtIdx=0,flatList=[];
+let nBenar=0,nSalah=0;
+let recognition=null,isOn=false;
+let sensLevel=3;
+let langCode='ar-SA';
+let restartTimer=null;
+let audioCtx=null,analyser=null,micStream=null,animFrame=null;
+
+// ── INIT ──────────────────────────────────────
+function init(){
+  buatTabs();muatHal();initSpeech();
+}
+
+function buatTabs(){
+  const el=document.getElementById('jilidTabs');
+  el.innerHTML='';
+  Object.keys(DATA).forEach(k=>{
+    const b=document.createElement('button');
+    b.className='jtab'+(k==jilid?' on':'');
+    b.textContent=DATA[k].nama;
+    b.onclick=()=>{jilid=parseInt(k);halIdx=0;tgtIdx=0;buatTabs();muatHal();};
+    el.appendChild(b);
+  });
+}
+
+function muatHal(){
+  const d=DATA[jilid];
+  const hal=d.halaman[halIdx];
+  document.getElementById('jilidLabel').textContent=d.nama;
+  document.getElementById('halLabel').textContent=`Halaman ${halIdx+1}`;
+  document.getElementById('navMid').textContent=`${halIdx+1} / ${d.halaman.length}`;
+  document.getElementById('btnPrev').disabled=halIdx===0;
+  document.getElementById('btnNext').disabled=halIdx===d.halaman.length-1;
+
+  flatList=[];
+  hal.baris.forEach((baris,bi)=>baris.forEach((h,hi)=>flatList.push({...h,bi,hi})));
+
+  const wrap=document.getElementById('ayatWrap');
+  wrap.innerHTML='';
+  hal.baris.forEach((baris,bi)=>{
+    const row=document.createElement('div');row.className='baris';
+    baris.forEach((h,hi)=>{
+      const idx=flatList.findIndex(f=>f.bi===bi&&f.hi===hi);
+      const box=document.createElement('div');
+      box.className='hbox';box.id='h'+idx;
+      box.onclick=()=>{tgtIdx=idx;kMkn();};
+      box.innerHTML=`<div class="arab">${h.a}</div><div class="rumi">${h.r}</div>`;
+      row.appendChild(box);
+    });
+    wrap.appendChild(row);
+  });
+
+  if(tgtIdx>=flatList.length)tgtIdx=0;
+  kMkn();kProg();
+}
+
+function tukarHal(d){
+  const hal=DATA[jilid].halaman;
+  halIdx=Math.max(0,Math.min(hal.length-1,halIdx+d));
+  tgtIdx=0;muatHal();
+}
+
+function kMkn(){
+  document.querySelectorAll('.hbox').forEach(b=>b.classList.remove('aktif'));
+  const item=flatList[tgtIdx];if(!item)return;
+  const box=document.getElementById('h'+tgtIdx);
+  if(box)box.classList.add('aktif');
+  document.getElementById('tArab').textContent=item.a;
+  document.getElementById('tRumi').textContent=item.r;
+  document.getElementById('tTip').textContent=`Sebut: "${item.r}" — Mic ${isOn?'ON 🔴':'OFF'}`;
+  document.getElementById('resultCard').style.display='none';
+}
+
+function kProg(){
+  const pct=flatList.length?(tgtIdx/flatList.length)*100:0;
+  document.getElementById('progBar').style.width=pct+'%';
+}
+
+function resetSkor(){
+  nBenar=0;nSalah=0;
+  document.getElementById('sBenar').textContent='0';
+  document.getElementById('sSalah').textContent='0';
+  document.getElementById('sPct').textContent='—';
+}
+
+function kSkor(){
+  document.getElementById('sBenar').textContent=nBenar;
+  document.getElementById('sSalah').textContent=nSalah;
+  const t=nBenar+nSalah;
+  document.getElementById('sPct').textContent=t?Math.round(nBenar/t*100)+'%':'—';
+}
+
+// ── SPEECH ────────────────────────────────────
+function initSpeech(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){
+    document.getElementById('micBtn').classList.add('off-state');
+    document.getElementById('micLabel').textContent='Browser tidak sokong — guna Chrome';
+    document.getElementById('micLabel').className='mic-label err';
+    return;
+  }
+  buatRecognition(SR);
+}
+
+function buatRecognition(SR){
+  if(recognition){try{recognition.abort();}catch(e){}}
+  const SR2=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR2();
+
+  // ── SENSITIVITY SETTINGS ──
+  // Sensitivity 1-2: interimResults ON, continuous, low confidence threshold
+  // Sensitivity 3: balanced
+  // Sensitivity 4-5: interimResults OFF, need clear speech
+  recognition.lang=langCode;
+  recognition.continuous=true;                    // ← terus dengar, tak stop sendiri
+  recognition.interimResults=sensLevel<=3;        // ← interim results utk sensitivity rendah
+  recognition.maxAlternatives=sensLevel<=2?8:5;   // ← lebih alternatives = lebih peluang match
+
+  recognition.onresult=(e)=>{
+    let transcript='';
+    // ambil hasil terbaru
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const res=e.results[i];
+      if(res.isFinal||sensLevel<=2){
+        // untuk sensitivity rendah, ambil interim pun
+        for(let j=0;j<res.length;j++){
+          if(res[j].confidence>=(confidenceMin())||sensLevel<=2){
+            transcript=res[j].transcript.toLowerCase().trim();
+            break;
+          }
+        }
+        if(res.isFinal&&transcript)prosesHasil(transcript,e.results[i]);
+      }
+    }
+  };
+
+  recognition.onerror=(e)=>{
+    if(e.error==='no-speech'){
+      // no-speech: normal dalam continuous mode, restart
+      if(isOn)rMula();
+      return;
+    }
+    if(e.error==='aborted')return;
+    setMicLabel('Ralat: '+e.error,'err');
+    if(isOn)rMula();
+  };
+
+  recognition.onend=()=>{
+    if(isOn){
+      // Auto restart — ini kunci utama continuous listening
+      restartTimer=setTimeout(()=>{
+        if(isOn){
+          try{recognition.start();}catch(ex){}
+        }
+      },200);
+    }
+  };
+}
+
+function confidenceMin(){
+  // sensitivity 1=paling rendah threshold (accept semua), 5=tinggi threshold
+  const map={1:0,2:0.1,3:0.25,4:0.45,5:0.6};
+  return map[sensLevel]||0.25;
+}
+
+function rMula(){
+  clearTimeout(restartTimer);
+  restartTimer=setTimeout(()=>{
+    if(isOn&&recognition){
+      try{recognition.start();}catch(ex){}
+    }
+  },300);
+}
+
+function toggleMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return;
+  if(isOn){
+    stopMic();
+  }else{
+    startMic();
+  }
+}
+
+function startMic(){
+  isOn=true;
+  const btn=document.getElementById('micBtn');
+  btn.classList.add('on');
+  btn.textContent='🔴';
+  setMicLabel('Sedang dengar... sebut perlahan pun OK','live');
+  document.getElementById('waveWrap').classList.add('live');
+  buatRecognition();
+  try{recognition.start();}catch(e){}
+  mulaWaveform();
+  // Update tip
+  document.getElementById('tTip').textContent=`Mic ON — Sebut: "${(flatList[tgtIdx]||{}).r||'—'}"`;
+}
+
+function stopMic(){
+  isOn=false;
+  clearTimeout(restartTimer);
+  const btn=document.getElementById('micBtn');
+  btn.classList.remove('on');
+  btn.textContent='🎤';
+  setMicLabel('Tekan untuk mulakan','');
+  document.getElementById('waveWrap').classList.remove('live');
+  try{recognition.abort();}catch(e){}
+  hentiWaveform();
+}
+
+function setMicLabel(txt,cls){
+  const el=document.getElementById('micLabel');
+  el.textContent=txt;
+  el.className='mic-label'+(cls?' '+cls:'');
+}
+
+// ── WAVEFORM (AudioContext) ───────────────────
+async function mulaWaveform(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    micStream=stream;
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=64;
+    analyser.smoothingTimeConstant=0.7;
+    const src=audioCtx.createMediaStreamSource(stream);
+    src.connect(analyser);
+    lukisWave();
+  }catch(e){
+    // Mic access gagal utk waveform, tak apa — speech recognition tetap jalan
+  }
+}
+
+function lukisWave(){
+  const bars=document.querySelectorAll('.wave-bar');
+  if(!analyser||!isOn){bars.forEach(b=>b.style.height='4px');return;}
+  const data=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  const step=Math.floor(data.length/bars.length);
+  bars.forEach((b,i)=>{
+    const val=data[i*step]||0;
+    const h=4+Math.floor((val/255)*44);
+    b.style.height=h+'px';
+  });
+  animFrame=requestAnimationFrame(lukisWave);
+}
+
+function hentiWaveform(){
+  cancelAnimationFrame(animFrame);
+  if(micStream)micStream.getTracks().forEach(t=>t.stop());
+  if(audioCtx)audioCtx.close();
+  audioCtx=null;analyser=null;micStream=null;
+  document.querySelectorAll('.wave-bar').forEach(b=>b.style.height='4px');
+}
+
+// ── PROCESS RESULT ────────────────────────────
+function prosesHasil(heard,res){
+  const item=flatList[tgtIdx];
+  if(!item)return;
+
+  const rCard=document.getElementById('resultCard');
+  const rVerdict=document.getElementById('rVerdict');
+  const hbox=document.getElementById('h'+tgtIdx);
+
+  document.getElementById('rHeard').textContent=heard||'—';
+  rCard.style.display='block';
+
+  const betul=semak(heard,item);
+
+  if(betul){
+    nBenar++;
+    setMicLabel('✅ Betul! Teruskan...','ok');
+    rVerdict.textContent=`✅ BETUL — "${item.r}"`;
+    rVerdict.className='result-verdict ok';
+    if(hbox){hbox.classList.remove('silap');hbox.classList.add('ok');}
+
+    setTimeout(()=>{
+      if(tgtIdx<flatList.length-1){
+        tgtIdx++;kMkn();kProg();
+        setMicLabel('Sebut perlahan — Mic sedia','live');
+      }else{
+        setMicLabel('🎉 Halaman habis!','ok');
+      }
+    },1200);
+  }else{
+    nSalah++;
+    setMicLabel(`❌ Cuba lagi — "${item.r}"`, 'err');
+    rVerdict.textContent=`❌ Salah — Patut: "${item.r}"`;
+    rVerdict.className='result-verdict err';
+    if(hbox){hbox.classList.remove('ok');hbox.classList.add('silap');}
+    setTimeout(()=>setMicLabel('Mic sedia — Cube lagi perlahan-lahan','live'),2000);
+  }
+  kSkor();
+}
+
+// ── SEMAK BACAAN ─────────────────────────────
+function norm(t){
+  return t.toLowerCase()
+    .replace(/[\u064B-\u065F\u0610-\u061A]/g,'')
+    .replace(/[^a-z\u0600-\u06FF ]/g,'')
+    .replace(/\s+/g,' ').trim();
+}
+
+function semak(heard,item){
+  const h=norm(heard);
+  const r=norm(item.r);
+
+  // 1. Direct match bunyi
+  for(const b of item.b){
+    const bn=norm(b);
+    if(h===bn||h.includes(bn)||bn.includes(h))return true;
+  }
+  // 2. Rumi match
+  if(h.includes(r)||r.includes(h))return true;
+  // 3. Starts with (untuk bunyi pendek)
+  for(const b of item.b){
+    const bn=norm(b);
+    if(bn.length>=2&&(h.startsWith(bn.substring(0,2))||h.endsWith(bn.substring(bn.length-2))))return true;
+  }
+  // 4. Levenshtein fuzzy — lebih longgar bila sensitivity rendah
+  const maxDist=sensLevel<=2?2:sensLevel<=3?1:0;
+  if(maxDist>0){
+    for(const b of item.b){
+      if(lev(h,norm(b))<=maxDist)return true;
+    }
+    if(lev(h,r)<=maxDist)return true;
+  }
+  // 5. Phonetic similarity (untuk huruf pendek 2 char)
+  if(r.length<=3){
+    const phoneticMap={'ba':'ب','bi':'ب','bu':'ب','ta':'ت','ti':'ت','tu':'ت','ja':'ج','ji':'ج','ju':'ج',
+      'ha':'ح','hi':'ح','hu':'ح','ra':'ر','ri':'ر','ru':'ر','sa':'س','si':'س','su':'س','ka':'ك','ki':'ك','ku':'ك'};
+    for(const[k,v]of Object.entries(phoneticMap)){
+      if(h.includes(k)&&r.toLowerCase().startsWith(k))return true;
+    }
+  }
+  return false;
+}
+
+function lev(a,b){
+  const m=a.length,n=b.length;
+  if(m===0)return n;if(n===0)return m;
+  const dp=[];
+  for(let i=0;i<=m;i++){dp[i]=[i];for(let j=1;j<=n;j++)dp[i][j]=0;}
+  for(let j=0;j<=n;j++)dp[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+// ── CONTROLS ─────────────────────────────────
+function ubahSens(v){
+  sensLevel=parseInt(v);
+  document.getElementById('sensVal').textContent=v;
+  if(isOn){stopMic();startMic();}// restart dengan settings baru
+}
+
+function setLang(lang){
+  langCode=lang;
+  ['langAR','langMS','langEN'].forEach(id=>document.getElementById(id).classList.remove('on'));
+  const map={'ar-SA':'langAR','ms-MY':'langMS','en-US':'langEN'};
+  document.getElementById(map[lang]).classList.add('on');
+  if(isOn){stopMic();startMic();}
+}
+
+init();
+</script>
+</body>
+</html>
