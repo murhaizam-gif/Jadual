@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Semakan Penyelia</title>
+<style>
+  :root { --bg: #f4f6f5; --card: #fff; --line: #d9dfdc; --text: #1c2622; --muted: #66756e; --accent: #0f7b4a; --danger: #b3261e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, "Segoe UI", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 14px 14px 80px; }
+  h1 { font-size: 1.3rem; margin: 6px 0 2px; }
+  h2 { font-size: 1.05rem; margin: 0 0 8px; }
+  .sub { color: var(--muted); font-size: .9rem; margin-bottom: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  label { display: block; font-size: .9rem; color: var(--muted); margin: 8px 0 3px; }
+  input, select, textarea { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; color: var(--text); }
+  input[type=number] { text-align: right; }
+  button { font: inherit; border: 0; border-radius: 8px; padding: 11px 16px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+  button.ghost { background: #e8eeeb; color: var(--text); }
+  button.small { padding: 6px 10px; font-size: .85rem; }
+  button:disabled { opacity: .55; cursor: default; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .exp { display: grid; grid-template-columns: 1.2fr 1fr .8fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .stk { display: grid; grid-template-columns: 1fr 90px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .stk:last-child { border-bottom: 0; }
+  .stk span { overflow-wrap: anywhere; }
+  .err { background: #fdecea; color: var(--danger); border-radius: 8px; padding: 10px; margin: 10px 0; display: none; }
+  .ok { background: #e6f4ec; color: var(--accent); border-radius: 8px; padding: 12px; margin: 10px 0; }
+  .total { display: flex; justify-content: space-between; font-weight: 700; padding-top: 6px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 10px 14px; }
+  .bar > div { max-width: 640px; margin: 0 auto; }
+  .bar button { width: 100%; }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Semakan Penyelia</h1>
+  <div class="sub" id="who">Masukkan PIN penyelia untuk mula.</div>
+  <div class="err" id="err"></div>
+
+  <!-- Log masuk -->
+  <section class="card" id="loginBox">
+    <label for="pin">PIN penyelia</label>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+    <p><button id="loginBtn">Masuk</button></p>
+  </section>
+
+  <!-- Borang -->
+  <form id="form" class="hidden" autocomplete="off" onsubmit="return false">
+    <section class="card">
+      <h2>Maklumat</h2>
+      <div class="row">
+        <div><label for="date">Tarikh perniagaan</label><input id="date" type="date" required></div>
+        <div><label for="cashier">Nama cashier</label><select id="cashier" required></select></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tunai dalam laci</h2>
+      <div class="row">
+        <div><label for="float">Float awal laci (RM)</label><input id="float" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
+        <div><label for="counted">Tunai dikira sekarang (RM)</label><input id="counted" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" required></div>
+      </div>
+      <label for="withdrawn">Tunai sudah diambil atau diserah kepada penyelia (RM, jika ada)</label>
+      <input id="withdrawn" type="number" inputmode="decimal" min="0" step="0.01" value="0">
+      <p class="muted">Jangan kira jualan sendiri. Sistem POS akan membandingkan dengan jualan tunai cashier pada tarikh itu.</p>
+    </section>
+
+    <section class="card">
+      <h2>Perbelanjaan (dibayar daripada tunai laci)</h2>
+      <div id="expRows"></div>
+      <button type="button" class="ghost small" id="addExp">+ Tambah perbelanjaan</button>
+      <div class="total"><span>Jumlah perbelanjaan</span><span id="expTotal">RM0.00</span></div>
+    </section>
+
+    <section class="card">
+      <h2>Stok item</h2>
+      <p class="muted">Isi bilangan sebenar yang dikira. Biarkan kosong jika item tidak dikira.</p>
+      <input id="stkFilter" type="search" placeholder="Cari item...">
+      <div id="stkRows"></div>
+    </section>
+
+    <section class="card">
+      <label for="note">Catatan (pilihan)</label>
+      <textarea id="note" rows="2" maxlength="200"></textarea>
+    </section>
+
+    <div class="bar"><div><button id="submitBtn" type="submit">Semak dan hantar</button></div></div>
+  </form>
+
+  <section class="card hidden" id="doneBox"></section>
+</main>
+
+<script>
+// ===== TETAPAN: tampal URL Web app Apps Script anda di sini (berakhir dengan /exec) =====
+var API_URL = 'TAMPAL_URL_APPS_SCRIPT_DI_SINI';
+// ========================================================================================
+
+var state = { pin: '', name: '', lists: null, subId: '' };
+var $ = function (id) { return document.getElementById(id); };
+
+function showErr(msg) { var e = $('err'); e.textContent = msg; e.style.display = msg ? 'block' : 'none'; if (msg) { window.scrollTo(0, 0); } }
+function rm(n) { return 'RM' + (Number(n) || 0).toFixed(2); }
+function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+function newId() {
+  var a = new Uint8Array(12);
+  (window.crypto || window.msCrypto).getRandomValues(a);
+  var s = '';
+  for (var i = 0; i < a.length; i++) { s += ('0' + a[i].toString(16)).slice(-2); }
+  return 'S' + s;
+}
+
+function api(payload) {
+  // text/plain supaya tiada preflight CORS pada Apps Script
+  return fetch(API_URL, { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' })
+    .then(function (r) { return r.json(); });
+}
+
+// ---------- Log masuk ----------
+$('loginBtn').onclick = function () {
+  showErr('');
+  if (API_URL.indexOf('script.google.com') === -1) { showErr('URL Apps Script belum ditetapkan dalam fail ini.'); return; }
+  var pin = $('pin').value.trim();
+  if (pin.length < 4) { showErr('Masukkan PIN.'); return; }
+  $('loginBtn').disabled = true;
+  api({ action: 'login', pin: pin }).then(function (r) {
+    $('loginBtn').disabled = false;
+    if (!r.ok) { showErr(r.error || 'Gagal log masuk.'); return; }
+    state.pin = pin; state.name = r.name; state.lists = r.lists || {};
+    startForm();
+  }).catch(function () { $('loginBtn').disabled = false; showErr('Tiada sambungan. Cuba lagi.'); });
+};
+$('pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') { $('loginBtn').click(); } });
+
+// ---------- Borang ----------
+function startForm() {
+  $('loginBox').classList.add('hidden');
+  $('form').classList.remove('hidden');
+  $('who').textContent = 'Penyelia: ' + state.name;
+  state.subId = newId();
+  $('date').value = today();
+  var L = state.lists;
+  var sel = $('cashier');
+  sel.innerHTML = '<option value="">- pilih cashier -</option>';
+  (L.cashiers || []).forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+  $('float').value = L.float || 0;
+  if (!(L.cashiers || []).length) { showErr('Senarai cashier belum diterima daripada sistem POS. Pastikan worker POS sudah berjalan.'); }
+  addExpRow();
+  var box = $('stkRows');
+  box.innerHTML = '';
+  (L.products || []).forEach(function (p) {
+    var row = document.createElement('div'); row.className = 'stk'; row.dataset.name = p.name.toLowerCase();
+    row.innerHTML = '<span></span><input type="number" inputmode="numeric" min="0" step="1" placeholder="-">';
+    row.firstChild.textContent = p.name;
+    row.lastChild.dataset.pid = p.id; row.lastChild.dataset.pname = p.name;
+    box.appendChild(row);
+  });
+  if (!(L.products || []).length) { box.innerHTML = '<p class="muted">Tiada senarai item stok.</p>'; }
+}
+
+$('stkFilter').oninput = function () {
+  var q = this.value.toLowerCase();
+  Array.prototype.forEach.call(document.querySelectorAll('#stkRows .stk'), function (r) {
+    r.classList.toggle('hidden', q && r.dataset.name.indexOf(q) === -1);
+  });
+};
+
+function addExpRow() {
+  var d = document.createElement('div'); d.className = 'exp';
+  var opts = '<option value="">Akaun</option>';
+  (state.lists.accounts || []).forEach(function (a) { opts += '<option></option>'; });
+  d.innerHTML = '<select class="eacc"></select><input class="enote" placeholder="Catatan" maxlength="100"><input class="eamt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="RM"><button type="button" class="ghost small">X</button>';
+  var s = d.querySelector('.eacc');
+  s.innerHTML = '<option value="">Akaun</option>';
+  (state.lists.accounts || []).forEach(function (a) { var o = document.createElement('option'); o.value = a; o.textContent = a; s.appendChild(o); });
+  d.querySelector('button').onclick = function () { d.remove(); calcExp(); };
+  d.querySelector('.eamt').oninput = calcExp;
+  $('expRows').appendChild(d);
+}
+$('addExp').onclick = addExpRow;
+
+function expenses() {
+  var out = [];
+  Array.prototype.forEach.call(document.querySelectorAll('#expRows .exp'), function (r) {
+    var amt = parseFloat(r.querySelector('.eamt').value);
+    if (amt > 0) { out.push({ account: r.querySelector('.eacc').value, note: r.querySelector('.enote').value.trim(), amount: Math.round(amt * 100) / 100 }); }
+  });
+  return out;
+}
+function calcExp() { var t = 0; expenses().forEach(function (x) { t += x.amount; }); $('expTotal').textContent = rm(t); return t; }
+
+function stock() {
+  var out = [];
+  Array.prototype.forEach.call(document.querySelectorAll('#stkRows input'), function (i) {
+    if (i.value !== '') { out.push({ product_id: Number(i.dataset.pid), name: i.dataset.pname, qty: parseInt(i.value, 10) }); }
+  });
+  return out;
+}
+
+// ---------- Hantar ----------
+$('form').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  showErr('');
+  var cashier = $('cashier').value;
+  var counted = parseFloat($('counted').value);
+  if (!cashier) { showErr('Pilih nama cashier.'); return; }
+  if (!(counted >= 0)) { showErr('Isi jumlah tunai dikira.'); return; }
+  var exp = expenses();
+  for (var i = 0; i < exp.length; i++) { if (!exp[i].account) { showErr('Pilih akaun bagi setiap perbelanjaan.'); return; } }
+  var stk = stock();
+  var msg = 'Cashier: ' + cashier + '\nTarikh: ' + $('date').value + '\nTunai dikira: ' + rm(counted) +
+    '\nPerbelanjaan: ' + rm(calcExp()) + ' (' + exp.length + ' rekod)\nStok dikira: ' + stk.length + ' item\n\nHantar sekarang? Hantaran tidak boleh diubah.';
+  if (!confirm(msg)) { return; }
+  var data = {
+    date: $('date').value, cashier: cashier,
+    float: parseFloat($('float').value) || 0, counted: counted, withdrawn: parseFloat($('withdrawn').value) || 0,
+    expenses: exp, stock: stk, note: $('note').value.trim()
+  };
+  $('submitBtn').disabled = true; $('submitBtn').textContent = 'Menghantar...';
+  api({ action: 'submit', pin: state.pin, id: state.subId, data: data }).then(function (r) {
+    if (!r.ok) { $('submitBtn').disabled = false; $('submitBtn').textContent = 'Semak dan hantar'; showErr(r.error || 'Gagal menghantar.'); return; }
+    $('form').classList.add('hidden');
+    var d = $('doneBox'); d.classList.remove('hidden');
+    d.innerHTML = '<div class="ok"><b>Berjaya dihantar.</b><br>Rujukan: <span id="ref"></span><br>Data akan masuk ke sistem POS apabila kedai dibuka.</div><button id="again">Semakan baharu</button>';
+    $('ref').textContent = r.id;
+    $('again').onclick = function () { location.reload(); };
+  }).catch(function () {
+    // ID sama digunakan semula: selamat untuk cuba lagi, tidak akan dua kali
+    $('submitBtn').disabled = false; $('submitBtn').textContent = 'Semak dan hantar';
+    showErr('Tiada sambungan. Tekan hantar semula (tidak akan jadi dua kali).');
+  });
+});
+</script>
+</body>
+</html>
