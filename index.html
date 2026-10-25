@@ -22,7 +22,8 @@
   button.small { padding: 6px 10px; font-size: .85rem; }
   button:disabled { opacity: .55; cursor: default; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .exp { display: grid; grid-template-columns: 1.2fr 1fr .8fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .exp { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); align-items: center; }
+  .exp .enote { grid-column: 1 / 3; }
   .stk { display: grid; grid-template-columns: 1fr 90px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
   .stk:last-child { border-bottom: 0; }
   .stk span { overflow-wrap: anywhere; }
@@ -53,17 +54,20 @@
   <form id="form" class="hidden" autocomplete="off" onsubmit="return false">
     <section class="card">
       <h2>Maklumat</h2>
+      <p class="muted">Tiada ruangan wajib. Isi bahagian anda sahaja (tunai, perbelanjaan atau stok). Penyelia lain boleh menghantar bahagian lain pada tarikh yang sama.</p>
       <div class="row">
-        <div><label for="date">Tarikh perniagaan</label><input id="date" type="date" required></div>
-        <div><label for="cashier">Nama cashier</label><select id="cashier" required></select></div>
+        <div><label for="date">Tarikh perniagaan</label><input id="date" type="date"></div>
+        <div><label for="cashier">Cashier bertugas</label><select id="cashier"></select></div>
       </div>
+      <p class="muted">Tuntutan tunai dan stok dikenakan pada cashier ini. Jika tidak dipilih, sistem guna cashier hari itu jika hanya seorang dinyatakan dalam semakan lain.</p>
     </section>
 
     <section class="card">
-      <h2>Tunai dalam laci</h2>
+      <h2>Bahagian tunai laci</h2>
+      <p class="muted">Isi hanya jika anda yang mengira tunai. Kosongkan "tunai dikira" jika bukan bahagian anda.</p>
       <div class="row">
         <div><label for="float">Float awal laci (RM)</label><input id="float" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div>
-        <div><label for="counted">Tunai dikira sekarang (RM)</label><input id="counted" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" required></div>
+        <div><label for="counted">Tunai dikira sekarang (RM)</label><input id="counted" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
       </div>
       <label for="withdrawn">Tunai sudah diambil atau diserah kepada penyelia (RM, jika ada)</label>
       <input id="withdrawn" type="number" inputmode="decimal" min="0" step="0.01" value="0">
@@ -71,14 +75,15 @@
     </section>
 
     <section class="card">
-      <h2>Perbelanjaan (dibayar daripada tunai laci)</h2>
+      <h2>Perbelanjaan</h2>
+      <p class="muted">Pilih "Tunai laci" jika dibayar daripada laci (ditolak daripada tunai dijangka) atau "Duit sendiri" jika dibayar menggunakan duit sendiri (tidak menjejaskan tunai laci).</p>
       <div id="expRows"></div>
       <button type="button" class="ghost small" id="addExp">+ Tambah perbelanjaan</button>
       <div class="total"><span>Jumlah perbelanjaan</span><span id="expTotal">RM0.00</span></div>
     </section>
 
     <section class="card">
-      <h2>Stok item</h2>
+      <h2>Bahagian stok item</h2>
       <p class="muted">Isi bilangan sebenar yang dikira. Biarkan kosong jika item tidak dikira.</p>
       <input id="stkFilter" type="search" placeholder="Cari item...">
       <div id="stkRows"></div>
@@ -97,7 +102,7 @@
 
 <script>
 // ===== TETAPAN: tampal URL Web app Apps Script anda di sini (berakhir dengan /exec) =====
-var API_URL = 'https://script.google.com/macros/s/AKfycby3LL149rFbTDNV8lk1Pc0_Fq55T62j-YBtvSE8ij0Jq1ZxIlL4VVM8-i19MSk0MZoZ3Q/exec';
+var API_URL = 'TAMPAL_URL_APPS_SCRIPT_DI_SINI';
 // ========================================================================================
 
 var state = { pin: '', name: '', lists: null, subId: '' };
@@ -145,10 +150,9 @@ function startForm() {
   $('date').value = today();
   var L = state.lists;
   var sel = $('cashier');
-  sel.innerHTML = '<option value="">- pilih cashier -</option>';
+  sel.innerHTML = '<option value="">- tidak dinyatakan -</option>';
   (L.cashiers || []).forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
   $('float').value = L.float || 0;
-  if (!(L.cashiers || []).length) { showErr('Senarai cashier belum diterima daripada sistem POS. Pastikan worker POS sudah berjalan.'); }
   addExpRow();
   var box = $('stkRows');
   box.innerHTML = '';
@@ -171,9 +175,8 @@ $('stkFilter').oninput = function () {
 
 function addExpRow() {
   var d = document.createElement('div'); d.className = 'exp';
-  var opts = '<option value="">Akaun</option>';
-  (state.lists.accounts || []).forEach(function (a) { opts += '<option></option>'; });
-  d.innerHTML = '<select class="eacc"></select><input class="enote" placeholder="Catatan" maxlength="100"><input class="eamt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="RM"><button type="button" class="ghost small">X</button>';
+  d.innerHTML = '<select class="eacc"></select><select class="esrc"><option value="laci">Tunai laci</option><option value="sendiri">Duit sendiri</option></select><button type="button" class="ghost small">X</button>' +
+    '<input class="enote" placeholder="Catatan" maxlength="100"><input class="eamt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="RM">';
   var s = d.querySelector('.eacc');
   s.innerHTML = '<option value="">Akaun</option>';
   (state.lists.accounts || []).forEach(function (a) { var o = document.createElement('option'); o.value = a; o.textContent = a; s.appendChild(o); });
@@ -187,7 +190,7 @@ function expenses() {
   var out = [];
   Array.prototype.forEach.call(document.querySelectorAll('#expRows .exp'), function (r) {
     var amt = parseFloat(r.querySelector('.eamt').value);
-    if (amt > 0) { out.push({ account: r.querySelector('.eacc').value, note: r.querySelector('.enote').value.trim(), amount: Math.round(amt * 100) / 100 }); }
+    if (amt > 0) { out.push({ account: r.querySelector('.eacc').value, note: r.querySelector('.enote').value.trim(), amount: Math.round(amt * 100) / 100, source: r.querySelector('.esrc').value }); }
   });
   return out;
 }
@@ -206,18 +209,22 @@ $('form').addEventListener('submit', function (ev) {
   ev.preventDefault();
   showErr('');
   var cashier = $('cashier').value;
-  var counted = parseFloat($('counted').value);
-  if (!cashier) { showErr('Pilih nama cashier.'); return; }
-  if (!(counted >= 0)) { showErr('Isi jumlah tunai dikira.'); return; }
+  var countedRaw = $('counted').value.trim();
+  var hasCash = countedRaw !== '';
   var exp = expenses();
-  for (var i = 0; i < exp.length; i++) { if (!exp[i].account) { showErr('Pilih akaun bagi setiap perbelanjaan.'); return; } }
+  for (var i = 0; i < exp.length; i++) { if (!exp[i].account) { showErr('Pilih akaun bagi setiap perbelanjaan yang ada jumlah.'); return; } }
   var stk = stock();
-  var msg = 'Cashier: ' + cashier + '\nTarikh: ' + $('date').value + '\nTunai dikira: ' + rm(counted) +
-    '\nPerbelanjaan: ' + rm(calcExp()) + ' (' + exp.length + ' rekod)\nStok dikira: ' + stk.length + ' item\n\nHantar sekarang? Hantaran tidak boleh diubah.';
-  if (!confirm(msg)) { return; }
+  if (!hasCash && !exp.length && !stk.length) { showErr('Isi sekurang-kurangnya satu bahagian: tunai, perbelanjaan atau stok.'); return; }
+  var drawerTotal = 0, ownTotal = 0;
+  exp.forEach(function (x) { if (x.source === 'sendiri') { ownTotal += x.amount; } else { drawerTotal += x.amount; } });
+  var lines = ['Tarikh: ' + ($('date').value || today()), 'Cashier: ' + (cashier || 'tidak dinyatakan')];
+  if (hasCash) { lines.push('Tunai dikira: ' + rm(parseFloat(countedRaw))); }
+  if (exp.length) { lines.push('Perbelanjaan: laci ' + rm(drawerTotal) + ', duit sendiri ' + rm(ownTotal)); }
+  if (stk.length) { lines.push('Stok dikira: ' + stk.length + ' item'); }
+  if (!confirm(lines.join('\n') + '\n\nHantar sekarang? Hantaran tidak boleh diubah.')) { return; }
   var data = {
-    date: $('date').value, cashier: cashier,
-    float: parseFloat($('float').value) || 0, counted: counted, withdrawn: parseFloat($('withdrawn').value) || 0,
+    date: $('date').value || today(), cashier: cashier,
+    float: parseFloat($('float').value) || 0, counted: hasCash ? parseFloat(countedRaw) : '', withdrawn: parseFloat($('withdrawn').value) || 0,
     expenses: exp, stock: stk, note: $('note').value.trim()
   };
   $('submitBtn').disabled = true; $('submitBtn').textContent = 'Menghantar...';
